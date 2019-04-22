@@ -155,3 +155,31 @@ GRAPHENE = {
     'SCHEMA': 'store.api.v1.public.schema',
     'MIDDLEWARE': ()
 }
+
+PAYMENT_SYSTEM_BACKENDS = [
+    {
+        'NAME': 'store.payment.backends.appstore.AppstoreBackend',
+        'OPTIONS': {
+            'sandbox': False,
+        }
+    },
+    {
+        'NAME': 'store.payment.backends.mailru.MailruBackend',
+        'OPTIONS': {
+            'sandbox': False,
+        }
+    },
+    {
+        'NAME': 'store.payment.backends.steam.SteamBackend',
+        'OPTIONS': {
+            'sandbox': False,
+        }
+    },
+    {
+        'NAME': 'store.payment.backends.xsolla.XsollaBackend',
+        'OPTIONS': {
+            'sandbox': False,
+            'project_id': None
+        }
+    },
+]

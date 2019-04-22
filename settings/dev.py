@@ -92,3 +92,31 @@ LOGGING = {
         },
     }
 }
+
+PAYMENT_SYSTEM_BACKENDS = [
+    {
+        'NAME': 'store.payment.backends.appstore.AppstoreBackend',
+        'OPTIONS': {
+            'sandbox': True,
+        }
+    },
+    {
+        'NAME': 'store.payment.backends.mailru.MailruBackend',
+        'OPTIONS': {
+            'sandbox': True,
+        }
+    },
+    {
+        'NAME': 'store.payment.backends.steam.SteamBackend',
+        'OPTIONS': {
+            'sandbox': True,
+        }
+    },
+    {
+        'NAME': 'store.payment.backends.xsolla.XsollaBackend',
+        'OPTIONS': {
+            'sandbox': True,
+            'project_id': None
+        }
+    },
+]
