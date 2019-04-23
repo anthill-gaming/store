@@ -1,21 +1,22 @@
 from anthill.framework.utils.module_loading import import_string
 from anthill.framework.core.exceptions import ImproperlyConfigured
 from anthill.framework.conf import settings
+from .exceptions import PaymentFailed
 
 
 def _get_backends(return_tuples=False):
     backends = []
     for backend_data in settings.PAYMENT_SYSTEM_BACKENDS:
-        backend_path = backend_data['NAME']
-        backend_options = backend_data.get('OPTIONS', {})
+        path = backend_data['NAME']
+        options = backend_data.get('OPTIONS', {})
         try:
-            backend_class = import_string(backend_path)
+            backend_class = import_string(path)
         except ImportError:
             msg = "The module in NAME could not be imported: %s." \
                   "Check your PAYMENT_SYSTEM_BACKENDS setting."
-            raise ImproperlyConfigured(msg % backend_data['NAME'])
-        backend = backend_class(**backend_options)
-        backends.append((backend, backend_path) if return_tuples else backend)
+            raise ImproperlyConfigured(msg % path)
+        backend = backend_class(**options)
+        backends.append((path, backend) if return_tuples else backend)
     if not backends:
         raise ImproperlyConfigured(
             'No payment system backends have been defined. '
@@ -26,3 +27,16 @@ def _get_backends(return_tuples=False):
 
 def get_backends():
     return _get_backends(return_tuples=False)
+
+
+def get_backend(path):
+    return dict(_get_backends(return_tuples=True))[path]
+
+
+async def create_order(backend_name, order, **kwargs):
+    backend = get_backend(backend_name)
+    try:
+        result = await backend.create_order(order, **kwargs)
+    except Exception as e:
+        raise PaymentFailed from e
+    return result

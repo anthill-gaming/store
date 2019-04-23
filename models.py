@@ -2,11 +2,20 @@
 # http://docs.sqlalchemy.org/en/latest/orm/tutorial.html#declare-a-mapping
 from anthill.framework.db import db
 from anthill.framework.utils import timezone
+from anthill.framework.utils.asynchronous import thread_pool_exec as future_exec, as_future
 from anthill.framework.utils.translation import translate_lazy as _
 from anthill.platform.api.internal import InternalAPIMixin
 from anthill.platform.auth import RemoteUser
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy_utils.types import JSONType, ChoiceType
-from store.payment import _get_backends
+from .payment import _get_backends, create_order
+from .payment.exceptions import PaymentFailed
+from typing import Optional
+from enum import Enum
+
+
+class OrderError(Exception):
+    pass
 
 
 class Store(db.Model):
@@ -54,21 +63,29 @@ class Category(db.Model):
 class Order(InternalAPIMixin, db.Model):
     __tablename__ = 'orders'
 
-    STATUSES = [
-        ('new', _('New')),
-        ('created', _('Created')),
-        ('failed', _('Failed')),
-        ('retry', _('Retry')),
-        ('approved', _('Approved')),
-        ('rejected', _('Rejected')),
-        ('succeeded', _('Succeeded')),
-    ]
+    class StatusType(Enum):
+        new = 1
+        created = 2
+        failed = 3
+        retry = 4
+        approved = 5
+        rejected = 6
+        succeeded = 7
+
+    StatusType.new.label = _('New')
+    StatusType.created.label = _('Created')
+    StatusType.failed.label = _('Failed')
+    StatusType.retry.label = _('Retry')
+    StatusType.approved.label = _('Approved')
+    StatusType.rejected.label = _('Rejected')
+    StatusType.succeeded.label = _('Succeeded')
+
     PAYMENT_BACKENDS = [
-        (path, path) for _, path in _get_backends(return_tuples=True)
+        (path, path) for path, _ in _get_backends(return_tuples=True)
     ]
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    status = db.Column(ChoiceType(STATUSES), default='new')
+    status = db.Column(ChoiceType(StatusType, impl=db.Integer()), default=StatusType.new)
     payment_backend = db.Column(ChoiceType(PAYMENT_BACKENDS))
     store_id = db.Column(db.Integer, db.ForeignKey('stores.id'))
     item_id = db.Column(db.Integer, db.ForeignKey('items.id'))
@@ -88,6 +105,36 @@ class Order(InternalAPIMixin, db.Model):
 
     def price_total(self, currency: str) -> float:
         return self.price(currency) * self.count
+
+    @classmethod
+    async def create_order(cls, payment_backend, payment_kwargs, **kwargs):
+        kwargs.update(payment_backend=payment_backend)
+        order = await future_exec(cls.create, **kwargs)
+        try:
+            payment = await create_order(payment_backend, order, **payment_kwargs)
+        except PaymentFailed as e:
+            await order.update_status(StatusType.failed)
+            raise OrderError from e
+        return {
+            'order': order,
+            'payment': payment
+        }
+
+    async def update_order(self, order_id: str, data: Optional[dict] = None):
+        raise NotImplementedError
+
+    @as_future
+    def update_status(self, status: StatusType):
+        self.status = status
+        self.save()
+
+    @as_future
+    def update_payload(self, data: dict, key: Optional[str] = None):
+        if key is None:
+            self.payload = data
+        else:
+            self.payload[key] = data
+        self.save()
 
 
 class Currency(db.Model):

@@ -164,6 +164,14 @@ PAYMENT_SYSTEM_BACKENDS = [
         }
     },
     {
+        'NAME': 'store.payment.backends.discord.DiscordBackend',
+        'OPTIONS': {
+            'sandbox': True,
+            'client_id': None,
+            'client_secret': None
+        }
+    },
+    {
         'NAME': 'store.payment.backends.mailru.MailruBackend',
         'OPTIONS': {
             'sandbox': False,
@@ -173,13 +181,18 @@ PAYMENT_SYSTEM_BACKENDS = [
         'NAME': 'store.payment.backends.steam.SteamBackend',
         'OPTIONS': {
             'sandbox': False,
+            'game_id': None,
+            'app_ticket_key': None
         }
     },
     {
         'NAME': 'store.payment.backends.xsolla.XsollaBackend',
         'OPTIONS': {
             'sandbox': False,
-            'project_id': None
+            'project_id': None,
+            'project_key': None,
+            'merchant_id': None,
+            'api_key': None
         }
     },
 ]
