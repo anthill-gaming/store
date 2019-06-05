@@ -41,6 +41,7 @@ class Item(db.Model):
     category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
     payload = db.Column(JSONType, nullable=False, default={})
     orders = db.relationship('Order', backref='item', lazy='dynamic')
+    created = db.Column(db.DateTime, default=timezone.now)
     active = db.Column(db.Boolean, nullable=False, default=True)
 
     def description(self, lang):
