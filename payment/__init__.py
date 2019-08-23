@@ -4,6 +4,10 @@ from anthill.framework.conf import settings
 from .exceptions import PaymentFailed
 
 
+class BackendNotFound(KeyError):
+    pass
+
+
 def _get_backends(return_tuples=False):
     backends = []
     for backend_data in settings.PAYMENT_SYSTEM_BACKENDS:
@@ -30,7 +34,10 @@ def get_backends():
 
 
 def get_backend(path):
-    return dict(_get_backends(return_tuples=True))[path]
+    try:
+        return dict(_get_backends(return_tuples=True))[path]
+    except KeyError:
+        raise BackendNotFound(path)
 
 
 async def create_order(backend_name, order, **kwargs):
